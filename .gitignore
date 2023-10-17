@@ -1,0 +1,7 @@
+/training*
+/finetune*
+/detection*
+/.idea
+/.vscode
+*.pyc
+*test*
