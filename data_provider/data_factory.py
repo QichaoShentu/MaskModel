@@ -1,7 +1,7 @@
 from torch.utils.data import ConcatDataset, DataLoader
-from data_loader import *
-from data_loader_onlyTrain import *
-from batch_scheduler import BatchSchedulerSampler
+from .data_loader import *
+from .data_loader_onlyTrain import *
+from .batch_scheduler import BatchSchedulerSampler
 
 train_data_dict = {
     "ASD": ASDSegLoaderPT,

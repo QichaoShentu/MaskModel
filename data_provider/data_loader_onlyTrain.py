@@ -76,7 +76,7 @@ class SWATSegLoaderPT(Dataset):  # dim=51
         self.step = step
         self.win_size = win_size
         self.scaler = StandardScaler()
-        train_data = pd.read_csv(os.path.join(data_path, "SWaT/swat_train2.csv"))
+        train_data = pd.read_csv(os.path.join(data_path, "SWAT/swat_train2.csv"))
         train_data = train_data.values[:, :-1]
         self.scaler.fit(train_data)
         train_data = self.scaler.transform(train_data)

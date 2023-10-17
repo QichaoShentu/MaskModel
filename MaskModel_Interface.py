@@ -1,0 +1,271 @@
+import torch
+import torch.nn as nn
+import numpy as np
+from models.mask_model import MaskModel
+from utils.utils import EarlyStopping, adjustment
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score
+
+
+class MaskModelInterface:
+    def __init__(
+        self,
+        patch_len=1,
+        output_dims=256,
+        hidden_dims=64,
+        depth=10,
+        win_size=100,
+        mask_mode="M_binomial",
+        device="cuda",
+        lr=0.0001,
+        show_every_iters=100,
+        after_iter_callback=None,
+        after_epoch_callback=None,
+        patience=7,
+    ):
+        super().__init__()
+        self.device = device
+        self.lr = lr
+        self.patience = patience
+        self._net = MaskModel(
+            patch_len=patch_len,
+            output_dims=output_dims,
+            hidden_dims=hidden_dims,
+            depth=depth,
+            win_size=win_size,
+            mask_mode=mask_mode,
+        ).to(self.device)
+        self.net = torch.optim.swa_utils.AveragedModel(self._net)
+        self.net.update_parameters(self._net)
+
+        self.show_every_iters = show_every_iters
+        self.after_iter_callback = after_iter_callback
+        self.after_epoch_callback = after_epoch_callback
+
+        self.n_epochs = 0
+        self.n_iters = 0
+
+    def pretrain(self, train_loader, n_epochs=5, n_iters=None, verbose=False):
+        optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
+        restruction_error = nn.MSELoss()
+        loss_log = []
+        loss_log_iters = []
+        self._net.train()
+        while True:
+            if n_epochs is not None and self.n_epochs >= n_epochs:
+                break
+            cum_loss = 0
+            n_epoch_iters = 0
+            interrupted = False
+            for batch in train_loader:
+                if n_iters is not None and self.n_iters >= n_iters:
+                    interrupted = True
+                    break
+                x = batch[0]
+                x = x.to(self.device)
+
+                optimizer.zero_grad()
+                restructed_x = self._net(x)
+                restructed_loss = restruction_error(x, restructed_x)
+                loss = restructed_loss
+                loss.backward()
+                optimizer.step()
+                self.net.update_parameters(self._net)
+
+                cum_loss += loss.item()
+                n_epoch_iters += 1
+                self.n_iters += 1
+
+                if self.n_iters % self.show_every_iters == 0:
+                    loss_per_iters = cum_loss / n_epoch_iters
+                    print(f"Iter #{n_epoch_iters}: loss={loss_per_iters}")
+                    loss_log_iters.append(loss_per_iters)
+
+                if self.after_iter_callback is not None:
+                    self.after_iter_callback(self, loss.item())
+
+            if interrupted:
+                break
+
+            cum_loss /= n_epoch_iters
+            loss_log.append(cum_loss)
+            if verbose:
+                print(f"Epoch #{self.n_epochs}: loss={cum_loss}")
+            self.n_epochs += 1
+
+            if self.after_epoch_callback is not None:
+                self.after_epoch_callback(self, cum_loss)
+
+        return loss_log, loss_log_iters
+
+    def train(
+        self, train_loader, val_loader, val_save_path, finetune=False, verbose=False
+    ):
+        early_stopping = EarlyStopping(patience=self.patience, verbose=verbose)
+        if finetune:
+            # freeze encoder
+            if verbose:
+                print("finetune: freeze encoder")
+            for param in self._net.encoder.parameters():
+                param.requires_grad = False
+            optimizer = torch.optim.AdamW(self._net.decoder.parameters(), lr=self.lr)
+        else:
+            if verbose:
+                print("training")
+            optimizer = torch.optim.AdamW(self._net.parameters(), lr=self.lr)
+
+        restruction_error = nn.MSELoss()
+        train_loss_log = []
+        train_loss_log_iters = []
+        val_loss_log = []
+        val_loss_log_iters = []
+        while True:
+            if early_stopping.early_stop:
+                break
+            cum_loss = 0
+            n_epoch_iters = 0
+            self._net.train()
+            for batch in train_loader:
+                x = batch[0]
+                x = x.to(self.device)
+                optimizer.zero_grad()
+                restructed_x = self._net(x)
+                restructed_loss = restruction_error(x, restructed_x)
+                loss = restructed_loss
+                loss.backward()
+                optimizer.step()
+                self.net.update_parameters(self._net)
+                cum_loss += loss.item()
+                train_loss_log_iters.append(loss.item())
+                n_epoch_iters += 1
+                self.n_iters += 1
+
+                if self.n_iters % self.show_every_iters == 0:
+                    loss_per_iters = cum_loss / n_epoch_iters
+                    print(f"Iter #{n_epoch_iters}: loss={loss_per_iters}")
+                    train_loss_log_iters.append(loss_per_iters)
+
+            cum_loss /= n_epoch_iters
+            train_loss_log.append(cum_loss)
+
+            if self.after_epoch_callback is not None:
+                self.after_epoch_callback(self, cum_loss)
+
+            # val
+            self.net.eval()
+            val_loss = 0
+            val_iters = 0
+            with torch.no_grad():
+                for batch in val_loader:
+                    x = batch[0]
+                    x = x.to(self.device)
+                    restructed_x = self.net(x, mask=self.mask_mode)
+                    restructed_loss = restruction_error(x, restructed_x)
+                    loss = restructed_loss
+                    val_loss += loss.item()
+                    val_loss_log_iters.append(loss.item())
+                    val_iters += 1
+                val_loss /= val_iters
+                val_loss_log.append(val_loss)
+
+            if verbose:
+                print(
+                    f"Epoch #{self.n_epochs}: train_loss={cum_loss}, val_loss={val_loss}"
+                )
+            early_stopping(val_loss, self.net, val_save_path, self.n_epochs)
+            self.n_epochs += 1
+
+        return train_loss_log, train_loss_log_iters, val_loss_log, val_loss_log_iters
+
+    def test(self, test_scores, test_labels, threshold, save_path, verbose=False):
+        if verbose:
+            print("Threshold :", threshold)
+        pred = (test_scores > threshold).astype(int)
+        gt = test_labels.astype(int)
+        # detection adjustment
+        gt, pred = adjustment(gt, pred)
+        pred = np.array(pred)
+        gt = np.array(gt)
+
+        accuracy = accuracy_score(gt, pred)
+        precision, recall, f_score, support = precision_recall_fscore_support(
+            gt, pred, average="binary"
+        )
+        if verbose:
+            print(
+                "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+                    accuracy, precision, recall, f_score
+                )
+            )
+
+        f = open(f"{save_path}/result_anomaly_detection.txt", "a")
+        f.write(
+            f"=patch_len:{self.patch_len}=output_dims:{self.output_dims}=hidden_dims:{self.hidden_dims}=depth:{self.depth}=win_size:{self.win_size}=mask_mode:{self.mask_mode}=threshold:{threshold}="
+            + "\n"
+        )
+        f.write(
+            "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+                accuracy, precision, recall, f_score
+            )
+        )
+        f.write("\n")
+        f.write("\n")
+        f.close()
+        return pred
+
+    def get_threshold(self, scores_list, ratio=1):
+        scores = np.concatenate(scores_list, axis=0)
+        threshold = np.percentile(scores, 100 - ratio)
+        return threshold
+
+    def cal_scores(self, loader):
+        """cal anomaly scores, scores = restructed_err
+
+        Args:
+            loader (_type_): data_loader
+
+        Returns:
+            (np.array, np.array): (scores, labels)
+        """
+        scores = []
+        labels = []
+        restruction_error = nn.MSELoss(reduction="none")
+
+        self.net.eval()
+        for i, (batch_x, batch_y) in enumerate(loader):
+            batch_x = batch_x.float().to(self.device)
+            # reconstruction
+            restructed_x = self.net(batch_x)
+            # criterion
+            restructed_err = restruction_error(batch_x, restructed_x).mean(
+                dim=-1
+            )  # b x t
+            score = restructed_err
+            score = score.detach().cpu().numpy()
+            scores.append(score)
+            labels.append(batch_y)
+
+        scores = np.concatenate(scores, axis=0).reshape(-1)
+        scores = np.array(scores)
+
+        labels = np.concatenate(labels, axis=0).reshape(-1)
+        labels = np.array(labels)
+
+        return scores, labels
+
+    def save(self, fn):
+        """Save the model to a file.
+
+        Args:
+            fn (str): filename.
+        """
+        torch.save(self.net.state_dict(), fn)
+
+    def load(self, fn):
+        """Load the model from a file.
+
+        Args:
+            fn (str): filename.
+        """
+        state_dict = torch.load(fn, map_location=self.device)
+        self.net.load_state_dict(state_dict)
