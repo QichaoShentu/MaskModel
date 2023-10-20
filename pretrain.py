@@ -36,7 +36,7 @@ parser.add_argument(
     help="The representation dimension (defaults to 320)",
 )
 parser.add_argument("--iters", type=int, default=None, help="The number of iterations")
-parser.add_argument("--epochs", type=int, default=5, help="The number of epochs")
+parser.add_argument("--epochs", type=int, default=3, help="The number of epochs")
 parser.add_argument(
     "--save_every",
     type=int,

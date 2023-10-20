@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from models.mask_model import MaskModel
-from utils.utils import EarlyStopping, adjustment
+from utils.utils import EarlyStopping, adjustment, save_info
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 
@@ -18,14 +18,21 @@ class MaskModelInterface:
         mask_mode="M_binomial",
         device="cuda",
         lr=0.0001,
-        show_every_iters=100,
+        show_every_iters=None,
+        patience=5,
         after_iter_callback=None,
         after_epoch_callback=None,
-        patience=7,
     ):
         super().__init__()
+        self.patch_len = patch_len
+        self.output_dims = output_dims
+        self.hidden_dims = hidden_dims
+        self.depth = depth
+        self.win_size = win_size
         self.device = device
         self.lr = lr
+        self.show_every_iters = show_every_iters
+        self.mask_mode = mask_mode
         self.patience = patience
         self._net = MaskModel(
             patch_len=patch_len,
@@ -76,7 +83,10 @@ class MaskModelInterface:
                 n_epoch_iters += 1
                 self.n_iters += 1
 
-                if self.n_iters % self.show_every_iters == 0:
+                if (
+                    self.show_every_iters is not None
+                    and self.n_iters % self.show_every_iters == 0
+                ):
                     loss_per_iters = cum_loss / n_epoch_iters
                     print(f"Iter #{n_epoch_iters}: loss={loss_per_iters}")
                     loss_log_iters.append(loss_per_iters)
@@ -99,7 +109,14 @@ class MaskModelInterface:
         return loss_log, loss_log_iters
 
     def train(
-        self, train_loader, val_loader, val_save_path, finetune=False, verbose=False
+        self,
+        train_loader,
+        val_loader,
+        val_save_path,
+        finetune=False,
+        n_epochs=3,
+        n_iters=None,
+        verbose=False,
     ):
         early_stopping = EarlyStopping(patience=self.patience, verbose=verbose)
         if finetune:
@@ -120,10 +137,13 @@ class MaskModelInterface:
         val_loss_log = []
         val_loss_log_iters = []
         while True:
+            if n_epochs is not None and self.n_epochs >= n_epochs:
+                break
             if early_stopping.early_stop:
                 break
             cum_loss = 0
             n_epoch_iters = 0
+
             self._net.train()
             for batch in train_loader:
                 x = batch[0]
@@ -140,11 +160,6 @@ class MaskModelInterface:
                 n_epoch_iters += 1
                 self.n_iters += 1
 
-                if self.n_iters % self.show_every_iters == 0:
-                    loss_per_iters = cum_loss / n_epoch_iters
-                    print(f"Iter #{n_epoch_iters}: loss={loss_per_iters}")
-                    train_loss_log_iters.append(loss_per_iters)
-
             cum_loss /= n_epoch_iters
             train_loss_log.append(cum_loss)
 
@@ -159,7 +174,7 @@ class MaskModelInterface:
                 for batch in val_loader:
                     x = batch[0]
                     x = x.to(self.device)
-                    restructed_x = self.net(x, mask=self.mask_mode)
+                    restructed_x = self.net(x)
                     restructed_loss = restruction_error(x, restructed_x)
                     loss = restructed_loss
                     val_loss += loss.item()
@@ -177,9 +192,9 @@ class MaskModelInterface:
 
         return train_loss_log, train_loss_log_iters, val_loss_log, val_loss_log_iters
 
-    def test(self, test_scores, test_labels, threshold, save_path, verbose=False):
-        if verbose:
-            print("Threshold :", threshold)
+    def test(
+        self, test_scores, test_labels, threshold, save_path, ratio=1, verbose=False
+    ):
         pred = (test_scores > threshold).astype(int)
         gt = test_labels.astype(int)
         # detection adjustment
@@ -197,21 +212,7 @@ class MaskModelInterface:
                     accuracy, precision, recall, f_score
                 )
             )
-
-        f = open(f"{save_path}/result_anomaly_detection.txt", "a")
-        f.write(
-            f"=patch_len:{self.patch_len}=output_dims:{self.output_dims}=hidden_dims:{self.hidden_dims}=depth:{self.depth}=win_size:{self.win_size}=mask_mode:{self.mask_mode}=threshold:{threshold}="
-            + "\n"
-        )
-        f.write(
-            "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
-                accuracy, precision, recall, f_score
-            )
-        )
-        f.write("\n")
-        f.write("\n")
-        f.close()
-        return pred
+        return pred, ratio, threshold, precision, recall, f_score
 
     def get_threshold(self, scores_list, ratio=1):
         scores = np.concatenate(scores_list, axis=0)
@@ -253,6 +254,65 @@ class MaskModelInterface:
 
         return scores, labels
 
+    def test_bestF1(self, test_scores, test_labels, save_path, verbose=False):
+        best_pred = 0
+        best_ratio = 0
+        best_threshold = 0
+        best_precision = 0
+        best_recall = 0
+        best_f_score = 0
+        ratios = []
+        thresholds = []
+        precisions = []
+        recalls = []
+        f_scores = []
+        for ratio in range(0, 100):
+            threshold = self.get_threshold([test_scores], ratio=ratio / 10)
+            pred, ratio, threshold, precision, recall, f_score = self.test(
+                test_scores=test_scores,
+                test_labels=test_labels,
+                threshold=threshold,
+                ratio=ratio / 10,
+                save_path=save_path,
+                verbose=False,
+            )
+            ratios.append(ratio)
+            thresholds.append(threshold)
+            precisions.append(precision)
+            recalls.append(recall)
+            f_scores.append(f_score)
+
+            if f_score > best_f_score:
+                best_pred = pred
+                best_ratio = ratio
+                best_threshold = threshold
+                best_precision = precision
+                best_recall = recall
+                best_f_score = f_score
+            elif f_score == best_f_score and precision > best_precision:
+                best_pred = pred
+                best_ratio = ratio
+                best_threshold = threshold
+                best_precision = precision
+                best_recall = recall
+                best_f_score = f_score
+
+        save_info(ratios, thresholds, precisions, recalls, f_scores, save_path)
+        if verbose:
+            print(
+                "Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+                    best_precision, best_recall, best_f_score
+                )
+            )
+        return (
+            best_pred,
+            best_ratio,
+            best_threshold,
+            best_precision,
+            best_recall,
+            best_f_score,
+        )
+
     def save(self, fn):
         """Save the model to a file.
 
@@ -269,3 +329,11 @@ class MaskModelInterface:
         """
         state_dict = torch.load(fn, map_location=self.device)
         self.net.load_state_dict(state_dict)
+
+    def load_encoder(self, fn):
+        pretrained_dict=torch.load(fn, map_location=self.device)
+        model_dict = self.net.state_dict()
+        encoder_dict = self._net.encoder.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in encoder_dict}
+        model_dict.update(pretrained_dict)
+        self.net.load_state_dict(model_dict)

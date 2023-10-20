@@ -11,6 +11,14 @@ plt.ioff()
 
 
 def vis(scores, save_path, save_name, threshold=None):
+    '''Visualize anomaly scores and thresholds, and save the image under save_path
+
+    Args:
+        scores (_type_): _description_
+        save_path (_type_): _description_
+        save_name (_type_): _description_
+        threshold (_type_, optional): _description_. Defaults to None.
+    '''
     x = range(len(scores))
     y = scores
     linewidth = 0.1
@@ -27,6 +35,14 @@ def vis(scores, save_path, save_name, threshold=None):
 
 
 def save_log(log, flag, unit, run_dir):
+    '''save loss_log
+
+    Args:
+        log (_type_): _description_
+        flag (_type_): _description_
+        unit (_type_): _description_
+        run_dir (_type_): _description_
+    '''
     result = {
         f"{unit}": range(len(log)),
         "loss": log,
@@ -34,6 +50,38 @@ def save_log(log, flag, unit, run_dir):
     result = pd.DataFrame(result)
     result.to_csv(f"{run_dir}/{flag}_result_{unit}.csv", index=False)
 
+
+def save_result(ratio, threshold, precision, recall, f_score, run_dir):
+    '''ratio, threshold, precision, recall, f_score
+
+    Args:
+        ratio (_type_): _description_
+        threshold (_type_): _description_
+        precision (_type_): _description_
+        recall (_type_): _description_
+        f_score (_type_): _description_
+        run_dir (_type_): _description_
+    '''
+    info = {
+        "ratio": [ratio],
+        "threshold": [threshold],
+        "precision": [precision],
+        "recall": [recall],
+        "f_score": [f_score],
+    }
+    info = pd.DataFrame(info)
+    info.to_csv(f"{run_dir}/result.csv", index=False)
+
+def save_info(ratios, thresholds, precisions, recalls, f_scores, run_dir):
+    info = {
+        "ratio": ratios,
+        "threshold": thresholds,
+        "precision": precisions,
+        "recall": recalls,
+        "f_score": f_scores,
+    }
+    info = pd.DataFrame(info)
+    info.to_csv(f"{run_dir}/info.csv", index=False)
 
 def name_with_datetime(prefix="default"):
     now = datetime.now()
@@ -137,7 +185,7 @@ class EarlyStopping:
     def save_checkpoint(self, val_loss, model, path, n_epochs):
         if self.verbose:
             print(
-                f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ..."
+                f"Validation loss decreased ({self.val_loss_min:.5f} --> {val_loss:.5f}).  Saving model ..."
             )
         torch.save(model.state_dict(), path + "/" + f"model_{n_epochs}.pkl")
         self.val_loss_min = val_loss
