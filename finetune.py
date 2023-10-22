@@ -29,7 +29,7 @@ parser.add_argument(
     default=0,
     help="The gpu no. used for training and inference (defaults to 0)",
 )
-parser.add_argument("--batch_size", type=int, default=32, help="")
+parser.add_argument("--batch_size", type=int, default=64, help="")
 parser.add_argument(
     "--lr", type=float, default=0.0001, help="The learning rate (defaults to 0.001)"
 )
@@ -50,7 +50,7 @@ parser.add_argument(
     default=1,
     help="Save the checkpoint every <save_every> iterations/epochs",
 )
-parser.add_argument("--patience", type=int, default=5, help="")
+parser.add_argument("--patience", type=int, default=7, help="")
 parser.add_argument("--seed", type=int, default=1, help="The random seed")
 args = parser.parse_args()
 print(args)

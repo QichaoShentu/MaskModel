@@ -187,7 +187,7 @@ class EarlyStopping:
             print(
                 f"Validation loss decreased ({self.val_loss_min:.5f} --> {val_loss:.5f}).  Saving model ..."
             )
-        torch.save(model.state_dict(), path + "/" + f"model_{n_epochs}.pkl")
+        torch.save(model.state_dict(), path + "/" + f"model.pkl")
         self.val_loss_min = val_loss
 
 

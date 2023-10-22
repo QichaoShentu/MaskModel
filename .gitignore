@@ -1,7 +1,7 @@
 /pretrain
 /finetune_decoder
 /finetune
-/detect?
+/detect*
 /.idea
 /.vscode
 *.pyc

@@ -118,7 +118,7 @@ class MaskModelInterface:
         n_iters=None,
         verbose=False,
     ):
-        early_stopping = EarlyStopping(patience=self.patience, verbose=verbose)
+        early_stopping = EarlyStopping(patience=self.patience, delta=10e-4, verbose=verbose)
         if finetune:
             # freeze encoder
             if verbose:
@@ -218,7 +218,7 @@ class MaskModelInterface:
         scores = np.concatenate(scores_list, axis=0)
         threshold = np.percentile(scores, 100 - ratio)
         return threshold
-
+ 
     def cal_scores(self, loader):
         """cal anomaly scores, scores = restructed_err
 
@@ -254,7 +254,12 @@ class MaskModelInterface:
 
         return scores, labels
 
-    def test_bestF1(self, test_scores, test_labels, save_path, verbose=False):
+    def test_bestF1(self, test_scores, test_labels, save_path, verbose=False, min=1, max=100, step=10):
+        '''(min/step)% ~ (max/step)%, (1/step)%
+
+        Returns:
+            _type_: _description_
+        '''
         best_pred = 0
         best_ratio = 0
         best_threshold = 0
@@ -264,10 +269,10 @@ class MaskModelInterface:
         ratios = []
         thresholds = []
         precisions = []
-        recalls = []
+        recalls = []    
         f_scores = []
-        for ratio in range(0, 100):
-            threshold = self.get_threshold([test_scores], ratio=ratio / 10)
+        for ratio in range(min, max):
+            threshold = self.get_threshold([test_scores], ratio=ratio / step)
             pred, ratio, threshold, precision, recall, f_score = self.test(
                 test_scores=test_scores,
                 test_labels=test_labels,

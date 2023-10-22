@@ -139,9 +139,28 @@ t = time.time()
 # save_result(ratio, threshold, precision, recall, f_score, run_dir)
 
 # bestF1
+# set
+# ratio_config = {
+#     "SMAP": {"min": 1, "max": 200, "step": 100}, # 0.01%-2%
+#     "SMD": {"min": 50, "max": 250, "step": 100}, # 0.5%-2.5%
+#     "NIPS_TS_SWAN": {"min": 300, "max": 600, "step": 10}, # 30%-60%
+#     "NIPS_TS_GECCO": {"min": 50, "max": 150, "step": 100}, # 0.5%-1.5%
+# }
+ratio_config = {
+    "SMAP": {"min": 1, "max": 100, "step": 10},
+    "SMD": {"min": 1, "max": 100, "step": 10}, 
+    "NIPS_TS_SWAN": {"min": 1, "max": 100, "step": 10}, 
+    "NIPS_TS_GECCO": {"min": 1, "max": 100, "step": 10}, 
+}
 test_scores, test_labels = model.cal_scores(test_loader)
 pred, ratio, threshold, precision, recall, f_score = model.test_bestF1(
-    test_scores=test_scores, test_labels=test_labels, save_path=run_dir, verbose=True
+    test_scores=test_scores,
+    test_labels=test_labels,
+    save_path=run_dir,
+    verbose=True,
+    min=ratio_config[args.dataset]["min"],
+    max=ratio_config[args.dataset]["max"],
+    step=ratio_config[args.dataset]["step"],
 )
 save_result(ratio, threshold, precision, recall, f_score, run_dir)
 
