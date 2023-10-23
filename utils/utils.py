@@ -11,14 +11,14 @@ plt.ioff()
 
 
 def vis(scores, save_path, save_name, threshold=None):
-    '''Visualize anomaly scores and thresholds, and save the image under save_path
+    """Visualize anomaly scores and thresholds, and save the image under save_path
 
     Args:
         scores (_type_): _description_
         save_path (_type_): _description_
         save_name (_type_): _description_
         threshold (_type_, optional): _description_. Defaults to None.
-    '''
+    """
     x = range(len(scores))
     y = scores
     linewidth = 0.1
@@ -35,14 +35,14 @@ def vis(scores, save_path, save_name, threshold=None):
 
 
 def save_log(log, flag, unit, run_dir):
-    '''save loss_log
+    """save loss_log
 
     Args:
         log (_type_): _description_
         flag (_type_): _description_
         unit (_type_): _description_
         run_dir (_type_): _description_
-    '''
+    """
     result = {
         f"{unit}": range(len(log)),
         "loss": log,
@@ -52,7 +52,7 @@ def save_log(log, flag, unit, run_dir):
 
 
 def save_result(ratio, threshold, precision, recall, f_score, run_dir):
-    '''ratio, threshold, precision, recall, f_score
+    """ratio, threshold, precision, recall, f_score
 
     Args:
         ratio (_type_): _description_
@@ -61,7 +61,7 @@ def save_result(ratio, threshold, precision, recall, f_score, run_dir):
         recall (_type_): _description_
         f_score (_type_): _description_
         run_dir (_type_): _description_
-    '''
+    """
     info = {
         "ratio": [ratio],
         "threshold": [threshold],
@@ -72,7 +72,9 @@ def save_result(ratio, threshold, precision, recall, f_score, run_dir):
     info = pd.DataFrame(info)
     info.to_csv(f"{run_dir}/result.csv", index=False)
 
+
 def save_info(ratios, thresholds, precisions, recalls, f_scores, run_dir):
+    """ratio, threshold, precision, recall, f_score"""
     info = {
         "ratio": ratios,
         "threshold": thresholds,
@@ -82,6 +84,7 @@ def save_info(ratios, thresholds, precisions, recalls, f_scores, run_dir):
     }
     info = pd.DataFrame(info)
     info.to_csv(f"{run_dir}/info.csv", index=False)
+
 
 def name_with_datetime(prefix="default"):
     now = datetime.now()
@@ -140,6 +143,11 @@ def init_dl_program(
         torch.backends.cuda.matmul.allow_tf32 = use_tf32
 
     return devices if len(devices) > 1 else devices[0]
+
+
+def take_per_row(A, indx, num_elem):
+    all_indx = indx[:, None] + np.arange(num_elem)
+    return A[torch.arange(all_indx.shape[0])[:, None], all_indx]
 
 
 class EarlyStopping:

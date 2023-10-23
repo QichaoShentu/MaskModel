@@ -5,7 +5,7 @@ from datetime import timedelta
 import pandas as pd
 from utils.utils import *
 from data_provider import train_data_provider
-from MaskModel import MaskModelInterface
+from MaskModel_contr import MaskModelInterface
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -15,18 +15,18 @@ parser.add_argument(
     help="ASD,MSL,PSM,SWAT,NIPS_TS_Creditcard,SKAB",
 )
 parser.add_argument("--data_path", type=str, default="/workspace/dataset", help="")
-parser.add_argument("--save_name", type=str, default="P1MMaskR256", help="")
+parser.add_argument("--save_name", type=str, default="Contr_W3000P1MMaskR256", help="")
 parser.add_argument(
     "--gpu",
     type=int,
     default=0,
     help="The gpu no. used for training and inference (defaults to 0)",
 )
-parser.add_argument("--batch_size", type=int, default=64, help="")
+parser.add_argument("--batch_size", type=int, default=1, help="")
 parser.add_argument(
     "--lr", type=float, default=0.0001, help="The learning rate (defaults to 0.001)"
 )
-parser.add_argument("--win_size", type=int, default=100, help="")
+parser.add_argument("--win_size", type=int, default=1000, help="")
 parser.add_argument("--patch_len", type=int, default=1, help="")
 parser.add_argument("--mask_mode", type=str, default="M_binomial", help="")
 parser.add_argument(
@@ -36,7 +36,7 @@ parser.add_argument(
     help="The representation dimension (defaults to 320)",
 )
 parser.add_argument("--iters", type=int, default=None, help="The number of iterations")
-parser.add_argument("--epochs", type=int, default=3, help="The number of epochs")
+parser.add_argument("--epochs", type=int, default=1, help="The number of epochs")
 parser.add_argument(
     "--save_every",
     type=int,
@@ -68,7 +68,7 @@ config = dict(
     output_dims=args.repr_dims,
     hidden_dims=64,
     depth=10,
-    win_size=args.win_size,
+    # win_size=args.win_size,
     mask_mode=args.mask_mode,
     device=device,
     lr=args.lr,

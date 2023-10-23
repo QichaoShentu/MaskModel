@@ -5,7 +5,7 @@ from datetime import timedelta
 import pandas as pd
 from utils.utils import *
 from data_provider import data_provider
-from MaskModel_Interface import MaskModelInterface
+from MaskModel import MaskModelInterface
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
