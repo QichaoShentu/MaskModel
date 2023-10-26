@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 from models.mask_model import MaskModel
 from utils.utils import EarlyStopping, adjustment, save_info
@@ -72,7 +73,7 @@ class MaskModelInterface:
                 x = x.to(self.device)
 
                 optimizer.zero_grad()
-                restructed_x = self._net(x)
+                restructed_x, _ = self._net(x)
                 restructed_loss = restruction_error(x, restructed_x)
                 loss = restructed_loss
                 loss.backward()
@@ -118,7 +119,9 @@ class MaskModelInterface:
         n_iters=None,
         verbose=False,
     ):
-        early_stopping = EarlyStopping(patience=self.patience, delta=10e-4, verbose=verbose)
+        early_stopping = EarlyStopping(
+            patience=self.patience, delta=10e-4, verbose=verbose
+        )
         if finetune:
             # freeze encoder
             if verbose:
@@ -149,7 +152,7 @@ class MaskModelInterface:
                 x = batch[0]
                 x = x.to(self.device)
                 optimizer.zero_grad()
-                restructed_x = self._net(x)
+                restructed_x, _ = self._net(x)
                 restructed_loss = restruction_error(x, restructed_x)
                 loss = restructed_loss
                 loss.backward()
@@ -174,7 +177,7 @@ class MaskModelInterface:
                 for batch in val_loader:
                     x = batch[0]
                     x = x.to(self.device)
-                    restructed_x = self.net(x)
+                    restructed_x, _ = self.net(x)
                     restructed_loss = restruction_error(x, restructed_x)
                     loss = restructed_loss
                     val_loss += loss.item()
@@ -196,7 +199,9 @@ class MaskModelInterface:
         self, test_scores, test_labels, threshold, save_path, ratio=1, verbose=False
     ):
         pred = (test_scores > threshold).astype(int)
+        # print(test_labels.shape)
         gt = test_labels.astype(int)
+        # gt = test_labels
         # detection adjustment
         gt, pred = adjustment(gt, pred)
         pred = np.array(pred)
@@ -218,7 +223,7 @@ class MaskModelInterface:
         scores = np.concatenate(scores_list, axis=0)
         threshold = np.percentile(scores, 100 - ratio)
         return threshold
- 
+
     def cal_scores(self, loader):
         """cal anomaly scores, scores = restructed_err
 
@@ -236,30 +241,45 @@ class MaskModelInterface:
         for i, (batch_x, batch_y) in enumerate(loader):
             batch_x = batch_x.float().to(self.device)
             # reconstruction
-            restructed_x = self.net(batch_x)
+            restructed_x, _ = self.net(batch_x)
             # criterion
             restructed_err = restruction_error(batch_x, restructed_x).mean(
                 dim=-1
             )  # b x t
             score = restructed_err
+            # trick
+            score = F.softmax(score, dim=-1)
+             
             score = score.detach().cpu().numpy()
             scores.append(score)
             labels.append(batch_y)
 
         scores = np.concatenate(scores, axis=0).reshape(-1)
         scores = np.array(scores)
+       
 
         labels = np.concatenate(labels, axis=0).reshape(-1)
         labels = np.array(labels)
 
+        # print(scores.shape, labels.shape)
         return scores, labels
 
-    def test_bestF1(self, test_scores, test_labels, save_path, verbose=False, min=1, max=100, step=10):
-        '''(min/step)% ~ (max/step)%, (1/step)%
+
+    def test_bestF1(
+        self,
+        test_scores,
+        test_labels,
+        save_path,
+        verbose=False,
+        min=1,
+        max=100,
+        step=10,
+    ):
+        """(min/step)% ~ (max/step)%, (1/step)%
 
         Returns:
             _type_: _description_
-        '''
+        """
         best_pred = 0
         best_ratio = 0
         best_threshold = 0
@@ -269,15 +289,16 @@ class MaskModelInterface:
         ratios = []
         thresholds = []
         precisions = []
-        recalls = []    
+        recalls = []
         f_scores = []
         for ratio in range(min, max):
             threshold = self.get_threshold([test_scores], ratio=ratio / step)
+            # print(threshold)  #
             pred, ratio, threshold, precision, recall, f_score = self.test(
                 test_scores=test_scores,
                 test_labels=test_labels,
                 threshold=threshold,
-                ratio=ratio / 10,
+                ratio=ratio / step,
                 save_path=save_path,
                 verbose=False,
             )
@@ -336,9 +357,11 @@ class MaskModelInterface:
         self.net.load_state_dict(state_dict)
 
     def load_encoder(self, fn):
-        pretrained_dict=torch.load(fn, map_location=self.device)
+        pretrained_dict = torch.load(fn, map_location=self.device)
         model_dict = self.net.state_dict()
         encoder_dict = self._net.encoder.state_dict()
-        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in encoder_dict}
+        pretrained_dict = {
+            k: v for k, v in pretrained_dict.items() if k in encoder_dict
+        }
         model_dict.update(pretrained_dict)
         self.net.load_state_dict(model_dict)

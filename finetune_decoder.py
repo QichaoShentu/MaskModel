@@ -31,7 +31,7 @@ parser.add_argument(
 )
 parser.add_argument("--batch_size", type=int, default=128, help="")
 parser.add_argument(
-    "--lr", type=float, default=0.0001, help="The learning rate (defaults to 0.001)"
+    "--lr", type=float, default=0.001, help="The learning rate (defaults to 0.001)"
 )
 parser.add_argument("--win_size", type=int, default=90, help="")
 parser.add_argument("--patch_len", type=int, default=1, help="")

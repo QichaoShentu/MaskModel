@@ -31,4 +31,4 @@ class MaskModel(nn.Module):
         )  # b x input_dims x patch_num x patch_len
         repr = self.encoder(x, mask=mask) # b x input_dims x patch_num x co
         x = self.decoder(repr)  # b x win_size x input_dims
-        return x
+        return x, repr # update

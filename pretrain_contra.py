@@ -24,7 +24,7 @@ parser.add_argument(
 )
 parser.add_argument("--batch_size", type=int, default=1, help="")
 parser.add_argument(
-    "--lr", type=float, default=0.0001, help="The learning rate (defaults to 0.001)"
+    "--lr", type=float, default=0.001, help="The learning rate (defaults to 0.001)"
 )
 parser.add_argument("--win_size", type=int, default=1000, help="")
 parser.add_argument("--patch_len", type=int, default=1, help="")
@@ -89,7 +89,7 @@ dataset, data_loader = train_data_provider(
     args.train_datasets,
     args.batch_size,
     win_size=args.win_size,
-    step=1,
+    step=args.win_size,
 )
 print("data_loader len: ", len(data_loader))
 t = time.time()

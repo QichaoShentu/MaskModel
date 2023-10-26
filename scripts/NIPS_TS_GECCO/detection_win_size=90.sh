@@ -8,7 +8,7 @@ python -u detect.py \
     --mask_mode binomial \
     --repr_dims 256 \
     --train_nums half \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P1MaskR256-20231021/NIPS_TS_GECCO_half/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P1MaskR256-20231021/NIPS_TS_GECCO_half/model.pkl
 python -u detect.py \
     --save_name W90P1MMaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -17,7 +17,7 @@ python -u detect.py \
     --mask_mode M_binomial \
     --repr_dims 256 \
     --train_nums half \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P1MMaskR256-20231021/NIPS_TS_GECCO_half/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P1MMaskR256-20231021/NIPS_TS_GECCO_half/model.pkl
 python -u detect.py \
     --save_name W90P5MaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -26,7 +26,7 @@ python -u detect.py \
     --mask_mode binomial \
     --repr_dims 256 \
     --train_nums half \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P5MaskR256-20231021/NIPS_TS_GECCO_half/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P5MaskR256-20231021/NIPS_TS_GECCO_half/model.pkl
 python -u detect.py \
     --save_name W90P5MMaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -35,7 +35,7 @@ python -u detect.py \
     --mask_mode M_binomial \
     --repr_dims 256 \
     --train_nums half \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P5MMaskR256-20231021/NIPS_TS_GECCO_half/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P5MMaskR256-20231021/NIPS_TS_GECCO_half/model.pkl
 # NIPS_TS_GECCO all
 python -u detect.py \
     --save_name W90P1MaskR256 \
@@ -45,7 +45,7 @@ python -u detect.py \
     --mask_mode binomial \
     --repr_dims 256 \
     --train_nums all \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P1MaskR256-20231021/NIPS_TS_GECCO_all/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P1MaskR256-20231021/NIPS_TS_GECCO_all/model.pkl
 python -u detect.py \
     --save_name W90P1MMaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -54,7 +54,7 @@ python -u detect.py \
     --mask_mode M_binomial \
     --repr_dims 256 \
     --train_nums all \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P1MMaskR256-20231021/NIPS_TS_GECCO_all/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P1MMaskR256-20231021/NIPS_TS_GECCO_all/model.pkl
 python -u detect.py \
     --save_name W90P5MaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -63,7 +63,7 @@ python -u detect.py \
     --mask_mode binomial \
     --repr_dims 256 \
     --train_nums all \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P5MaskR256-20231021/NIPS_TS_GECCO_all/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P5MaskR256-20231021/NIPS_TS_GECCO_all/model.pkl
 python -u detect.py \
     --save_name W90P5MMaskR256 \
     --dataset NIPS_TS_GECCO \
@@ -72,4 +72,4 @@ python -u detect.py \
     --mask_mode M_binomial \
     --repr_dims 256 \
     --train_nums all \
-    --model_path /workspace/MaskModel/finetune_decoder/W90P5MMaskR256-20231021/NIPS_TS_GECCO_all/val/model.pkl
+    --model_path /workspace/MaskModel/detect-valbest/W90P5MMaskR256-20231021/NIPS_TS_GECCO_all/model.pkl
