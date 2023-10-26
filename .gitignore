@@ -6,3 +6,4 @@
 /.vscode
 *.pyc
 *test*
+utils/vis_loss.ipynb
